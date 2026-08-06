@@ -1,0 +1,545 @@
+openapi: 3.0.3
+info:
+  title: Desafio Mobile API
+  version: 2.0.0
+  description: |
+    API mock para o desafio Flutter de Carteira Digital Escolar.
+
+    Use as credenciais `12345678900` e `123456` em `POST /login`.
+    O token retornado é fixo, não expira e deve ser enviado nos endpoints
+    protegidos no formato `Authorization: Bearer desafio-mobile-token`.
+
+    As operações da carteira são criadas em `POST /transactions`: `credit`
+    representa uma recarga que aumenta o saldo e `debit` representa um saque
+    que reduz o saldo.
+servers:
+  - url: /
+    description: Mesmo host em que esta documentação está sendo exibida
+tags:
+  - name: Status
+  - name: Autenticação
+  - name: Usuário
+  - name: Transações
+  - name: Simulações
+paths:
+  /:
+    get:
+      tags:
+        - Status
+      summary: Consultar o status da API
+      operationId: getApiStatus
+      responses:
+        "200":
+          description: API disponível
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiStatus"
+              example:
+                name: Desafio Mobile API
+                status: online
+                documentation: /docs
+                openapi: /openapi.yaml
+                endpoints:
+                  login: POST /login
+                  profile: GET /me
+                  transactions: GET /transactions
+                  create_transaction: POST /transactions
+                  transaction: GET /transactions/:id
+  /login:
+    post:
+      tags:
+        - Autenticação
+      summary: Autenticar o aluno
+      description: |
+        Aceita o CPF somente com números ou formatado. O token do mock é fixo e
+        não expira; o logout deve ser realizado localmente pelo aplicativo.
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            examples:
+              semFormatacao:
+                summary: CPF sem formatação
+                value:
+                  cpf: "12345678900"
+                  password: "123456"
+              formatado:
+                summary: CPF formatado
+                value:
+                  cpf: "123.456.789-00"
+                  password: "123456"
+      responses:
+        "200":
+          description: Autenticação realizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          description: Corpo da requisição com JSON inválido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: invalid_json
+                message: O corpo da requisição não contém um JSON válido
+        "401":
+          description: CPF ou senha inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: invalid_credentials
+                message: CPF ou senha inválidos
+  /me:
+    get:
+      tags:
+        - Usuário
+      summary: Consultar o aluno autenticado
+      description: Retorna sempre o saldo atual depois das operações realizadas.
+      operationId: getCurrentUser
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Dados do aluno e saldo atual
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /transactions:
+    get:
+      tags:
+        - Transações
+      summary: Listar o histórico de transações
+      description: |
+        Retorna as transações da mais recente para a mais antiga. O valor de
+        `amount` é sempre positivo; use `type` para determinar o sinal visual.
+        Uma página além do total retorna `data` vazio com HTTP 200.
+      operationId: listTransactions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Página solicitada, iniciando em 1
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - name: per_page
+          in: query
+          description: Quantidade de transações por página
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+          example: 10
+        - name: type
+          in: query
+          description: Omita o parâmetro para retornar créditos e débitos
+          schema:
+            $ref: "#/components/schemas/TransactionType"
+      responses:
+        "200":
+          description: Página de transações
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionPage"
+        "400":
+          description: Parâmetro de filtro ou paginação inválido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: invalid_parameter
+                message: O parâmetro type deve ser credit ou debit
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags:
+        - Transações
+      summary: Realizar uma operação na carteira
+      description: |
+        Cria uma recarga (`credit`) ou um saque (`debit`). A atualização do
+        saldo e a inclusão da transação no extrato são realizadas juntas.
+        Saques acima do saldo disponível são recusados.
+      operationId: createTransaction
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTransactionRequest"
+            examples:
+              recarga:
+                summary: Adicionar saldo
+                value:
+                  type: credit
+                  amount: 50.0
+                  description: Recarga via Pix
+              saque:
+                summary: Reduzir saldo
+                value:
+                  type: debit
+                  amount: 10.0
+                  description: Saque solicitado pelo responsável
+      responses:
+        "201":
+          description: Operação concluída
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateTransactionResponse"
+        "400":
+          description: Corpo da requisição com JSON inválido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: invalid_json
+                message: O corpo da requisição não contém um JSON válido
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          description: Dados inválidos ou saldo insuficiente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                valorInvalido:
+                  value:
+                    error: validation_error
+                    message: O campo amount deve ser positivo e possuir no máximo duas casas decimais
+                saldoInsuficiente:
+                  value:
+                    error: insufficient_balance
+                    message: Saldo insuficiente para realizar o saque
+  /transactions/{id}:
+    get:
+      tags:
+        - Transações
+      summary: Consultar uma transação
+      operationId: getTransaction
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identificador da transação
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+      responses:
+        "200":
+          description: Detalhes da transação
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Transação não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: not_found
+                message: Transação não encontrada
+  /simulate/error:
+    get:
+      tags:
+        - Simulações
+      summary: Simular um erro interno
+      description: Rota pública auxiliar para testar o tratamento de erro da API.
+      operationId: simulateError
+      responses:
+        "500":
+          description: Erro interno simulado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: internal_server_error
+                message: Erro simulado pela API
+  /simulate/slow:
+    get:
+      tags:
+        - Simulações
+      summary: Simular uma resposta lenta
+      description: Aguarda aproximadamente três segundos antes de responder.
+      operationId: simulateSlowResponse
+      responses:
+        "200":
+          description: Resposta concluída depois do atraso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SlowResponse"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Informe somente `desafio-mobile-token`, sem o prefixo Bearer.
+  responses:
+    Unauthorized:
+      description: Token ausente ou inválido
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: unauthorized
+            message: Token ausente ou inválido
+  schemas:
+    ApiStatus:
+      type: object
+      required:
+        - name
+        - status
+        - documentation
+        - openapi
+        - endpoints
+      properties:
+        name:
+          type: string
+          example: Desafio Mobile API
+        status:
+          type: string
+          enum:
+            - online
+        documentation:
+          type: string
+          example: /docs
+        openapi:
+          type: string
+          example: /openapi.yaml
+        endpoints:
+          type: object
+          additionalProperties:
+            type: string
+    LoginRequest:
+      type: object
+      required:
+        - cpf
+        - password
+      properties:
+        cpf:
+          type: string
+          description: CPF com ou sem pontuação
+          example: "12345678900"
+        password:
+          type: string
+          format: password
+          example: "123456"
+    LoginResponse:
+      type: object
+      required:
+        - access_token
+        - token_type
+        - user
+      properties:
+        access_token:
+          type: string
+          example: desafio-mobile-token
+        token_type:
+          type: string
+          enum:
+            - Bearer
+        user:
+          $ref: "#/components/schemas/User"
+    User:
+      type: object
+      required:
+        - id
+        - name
+        - cpf
+        - school
+        - registration
+        - balance
+        - avatar_url
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: João da Silva
+        cpf:
+          type: string
+          example: "12345678900"
+        school:
+          type: string
+          example: Escola Exemplo
+        registration:
+          type: string
+          example: "20260001"
+        balance:
+          type: number
+          format: double
+          minimum: 0
+          description: Saldo atual do aluno em reais
+          example: 58.4
+        avatar_url:
+          type: string
+          format: uri
+          description: A imagem é remota e pode estar indisponível.
+          example: https://i.pravatar.cc/300?img=12
+    TransactionType:
+      type: string
+      enum:
+        - credit
+        - debit
+    Transaction:
+      type: object
+      required:
+        - id
+        - type
+        - description
+        - amount
+        - created_at
+      properties:
+        id:
+          type: integer
+          example: 26
+        type:
+          $ref: "#/components/schemas/TransactionType"
+        description:
+          type: string
+          example: Recarga via Pix
+        amount:
+          type: number
+          format: double
+          minimum: 0
+          description: Valor positivo em reais; o tipo determina crédito ou débito.
+          example: 50.0
+        created_at:
+          type: string
+          format: date-time
+          description: Data e hora no formato ISO 8601
+          example: "2026-08-06T12:00:00-03:00"
+    CreateTransactionRequest:
+      type: object
+      required:
+        - type
+        - amount
+      properties:
+        type:
+          allOf:
+            - $ref: "#/components/schemas/TransactionType"
+          description: Use `credit` para recarga e `debit` para saque.
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+          multipleOf: 0.01
+          description: Valor positivo em reais com no máximo duas casas decimais
+          example: 50.0
+        description:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: |
+            Descrição opcional. Se omitida, a API utiliza `Recarga de saldo` ou
+            `Saque de saldo`.
+          example: Recarga via Pix
+    CreateTransactionResponse:
+      type: object
+      required:
+        - transaction
+        - balance
+      properties:
+        transaction:
+          $ref: "#/components/schemas/Transaction"
+        balance:
+          type: number
+          format: double
+          minimum: 0
+          description: Saldo atualizado depois da operação
+          example: 108.4
+    TransactionPage:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          description: Transações ordenadas da mais recente para a mais antiga
+          items:
+            $ref: "#/components/schemas/Transaction"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+    Pagination:
+      type: object
+      required:
+        - page
+        - per_page
+        - total
+        - total_pages
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          example: 1
+        per_page:
+          type: integer
+          minimum: 1
+          maximum: 50
+          example: 10
+        total:
+          type: integer
+          minimum: 0
+          example: 26
+        total_pages:
+          type: integer
+          minimum: 0
+          example: 3
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Código estável e legível por máquina
+          example: validation_error
+        message:
+          type: string
+          description: Mensagem em português que pode ser adaptada pela interface
+          example: O campo amount deve ser positivo e possuir no máximo duas casas decimais
+    SlowResponse:
+      type: object
+      required:
+        - message
+        - delay_seconds
+      properties:
+        message:
+          type: string
+          example: Resposta retornada após 3 segundos
+        delay_seconds:
+          type: integer
+          example: 3
