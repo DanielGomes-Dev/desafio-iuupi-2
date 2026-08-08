@@ -1,5 +1,5 @@
+import 'package:carteira_digital_escolar/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_colors.dart';
 import '../widgets/custom_text_field.dart';
 
 class LoginScreen extends StatefulWidget {

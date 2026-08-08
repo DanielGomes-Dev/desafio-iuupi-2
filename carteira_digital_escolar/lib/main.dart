@@ -1,3 +1,4 @@
+import 'package:carteira_digital_escolar/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
@@ -15,7 +16,8 @@ class MyApp extends StatelessWidget {
       title: 'IUUPI',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      home: const LoginScreen(),
+      // home: const LoginScreen(),
+      home: const DashboardScreen(),
     );
   }
 }
