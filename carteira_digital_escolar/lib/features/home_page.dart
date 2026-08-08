@@ -1,7 +1,7 @@
 import 'package:carteira_digital_escolar/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:carteira_digital_escolar/features/statement/presentation/screens/statement_screen.dart';
-// TODO: Ajuste o caminho do import abaixo conforme a pasta onde você salvou o seu BottomNavBar
-import 'package:carteira_digital_escolar/shared/widgets/bottom_nav_bar.dart'; 
+import 'package:carteira_digital_escolar/features/profile/presentation/screens/profile_screen.dart';
+import 'package:carteira_digital_escolar/shared/widgets/bottom_nav_bar.dart';
 import 'package:flutter/material.dart';
 
 class HomePage extends StatefulWidget {
@@ -20,19 +20,22 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  // Lista com 4 telas correspondentes aos 4 itens da sua BottomNavBar
+  // ✅ ATUALIZADO: Adicione ProfileScreen
   final List<Widget> _pages = [
-    const DashboardScreen(),
-    const StatementScreen(),
-    const Placeholder(), // Substitua pela tela de Recarga quando criar
-    const Placeholder(), // Substitua pela tela de Perfil quando criar
+    const DashboardScreen(),      // Índice 0: Início
+    const StatementScreen(),       // Índice 1: Extrato
+    const Placeholder(
+      child: Center(
+        child: Text('Tela de Recarga - Em desenvolvimento'),
+      ),
+    ), // Índice 2: Recarga (em breve)
+    const ProfileScreen(),         // Índice 3: Perfil ✅ NOVO
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: _pages[_selectedIndex],
-      // Substituímos o BottomNavigationBar nativo pelo seu widget customizado
       bottomNavigationBar: BottomNavBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
