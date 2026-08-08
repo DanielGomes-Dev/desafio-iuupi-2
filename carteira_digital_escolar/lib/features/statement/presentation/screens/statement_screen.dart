@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../../../../shared/models/transaction_model.dart';
 import '../../../../shared/widgets/transaction_tile.dart';
-import '../../../../shared/widgets/bottom_nav_bar.dart';
 
 enum _TxType { credit, debit }
 
@@ -352,10 +351,6 @@ class _StatementScreenState extends State<StatementScreen> {
             ),
           ],
         ),
-      ),
-      bottomNavigationBar: BottomNavBar(
-        currentIndex: _navIndex,
-        onTap: (index) => setState(() => _navIndex = index),
       ),
     );
   }

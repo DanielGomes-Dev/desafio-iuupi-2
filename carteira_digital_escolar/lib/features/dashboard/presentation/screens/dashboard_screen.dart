@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../shared/models/transaction_model.dart';
 import '../../../../shared/widgets/transaction_tile.dart';
-import '../../../../shared/widgets/bottom_nav_bar.dart';
 
 enum _TxType { credit, debit }
 
@@ -136,10 +135,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
       // Usa BottomNavBar compartilhada
-      bottomNavigationBar: BottomNavBar(
-        currentIndex: _navIndex,
-        onTap: (index) => setState(() => _navIndex = index),
-      ),
     );
   }
 }
