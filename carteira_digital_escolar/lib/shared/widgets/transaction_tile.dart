@@ -1,4 +1,4 @@
-import 'package:carteira_digital_escolar/features/statement/presentation/screens/transactions_detail.dart';
+import 'package:carteira_digital_escolar/features/transaction/presentation/screens/transactions_detail_screen.dart';
 import 'package:flutter/material.dart';
 import '../models/transaction_model.dart';
 
