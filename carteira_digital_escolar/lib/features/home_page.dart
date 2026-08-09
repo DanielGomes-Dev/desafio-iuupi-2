@@ -30,17 +30,19 @@ class _HomePageState extends State<HomePage> {
     _initializeRepositories();
   }
 
+  void _selectTab(int navIndex) {
+    setState(() {
+      _selectedIndex = _pageIndexForNavIndex(navIndex);
+    });
+  }
+
+
   /// Inicializar repositórios
   /// Se usar Provider/GetIt, mova isso para main.dart
   void _initializeRepositories() {
     _profileRepository = ProfileRepository();
     _statementRepository = StatementRepository();
     _walletRepository = WalletRepository();
-
-    // debugPrint('✅ Repositórios inicializados');
-    // debugPrint('📍 ProfileRepository: baseUrl ${_profileRepository._dio.options.baseUrl}');
-    // debugPrint('📍 StatementRepository: baseUrl ${_statementRepository._dio.options.baseUrl}');
-    // debugPrint('📍 WalletRepository: baseUrl ${_walletRepository._dio.options.baseUrl}');
   }
 
 
@@ -50,6 +52,8 @@ class _HomePageState extends State<HomePage> {
       profileRepository: _profileRepository,
       statementRepository: _statementRepository,
       walletRepository: _walletRepository,
+      onNavigateToTab: _selectTab,
+
     ),
 
     // Índice 1: Extrato com repositório injetado
@@ -69,23 +73,23 @@ class _HomePageState extends State<HomePage> {
     return navIndex;
   }
 
-  void _onItemTapped(int index) {
-    if (index == 2) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => RechargeScreen(
-            profileRepository: _profileRepository,
-            walletRepository: _walletRepository,
+
+    void _onItemTapped(int index) {
+      if (index == 2) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => RechargeScreen(
+              profileRepository: _profileRepository,
+              walletRepository: _walletRepository,
+              onNavigateToTab: _selectTab, // ✅
+            ),
           ),
-        ),
-      );
-      return;
+        );
+        return;
+      }
+      _selectTab(index);
     }
 
-    setState(() {
-      _selectedIndex = _pageIndexForNavIndex(index);
-    });
-  }
 
   int get _currentNavIndex => _selectedIndex == 2 ? 3 : _selectedIndex;
 

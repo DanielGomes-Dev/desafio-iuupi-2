@@ -1,3 +1,4 @@
+import 'package:carteira_digital_escolar/core/network/auth_interceptor.dart';
 import 'package:dio/dio.dart';
 import '../../../../shared/models/transaction_model.dart';
 
@@ -19,15 +20,14 @@ class StatementFilter {
 class StatementRepository {
   final Dio _dio;
 
-  StatementRepository({Dio? dio})
-      : _dio = dio ??
-            Dio(
-              BaseOptions(
-                baseUrl: 'http://10.0.2.2:3001', // ← Altere se necessário
-                connectTimeout: const Duration(seconds: 10),
-                receiveTimeout: const Duration(seconds: 10),
-              ),
-            );
+  StatementRepository({Dio? dio}): _dio = dio ??
+        (Dio(
+          BaseOptions(
+            baseUrl: 'http://10.0.2.2:3001',
+            connectTimeout: const Duration(seconds: 10),
+            receiveTimeout: const Duration(seconds: 10),
+          ),
+        )..interceptors.add(AuthInterceptor()));
 
   /// Busca transações do extrato.
   /// GET /transactions
@@ -40,11 +40,6 @@ class StatementRepository {
     final response = await _dio.get<Map<String, dynamic>>(
       '/transactions',
       queryParameters: filter.toQueryParameters(),
-      options: Options(
-        headers: {
-          'Authorization': 'Bearer desafio-mobile-token',
-        },
-      ),
     );
 
     final data = response.data?['data'];

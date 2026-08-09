@@ -39,17 +39,12 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // TODO: trocar por chamada real (ex.: AuthRepository.login(cpf, senha))
-      await Future.delayed(const Duration(milliseconds: 600));
-
-      final user = User(id: cpf, name: 'Aluno', email: '$cpf@escola.com');
-      await context.read<AuthController>().login(user);
-      // Não precisa navegar manualmente: o AuthGatePage reage à mudança
-      // de estado e troca de tela sozinho.
+      await context.read<AuthController>().login(cpf: cpf, password: senha);
+      // AuthGatePage troca de tela sozinho ao detectar isAuthenticated
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao entrar: $e')),
+        SnackBar(content: Text('CPF ou senha inválidos.')),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);

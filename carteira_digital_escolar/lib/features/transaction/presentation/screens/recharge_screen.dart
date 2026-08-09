@@ -1,5 +1,6 @@
 import 'package:carteira_digital_escolar/features/profile/repositories/profile_repository.dart';
 import 'package:carteira_digital_escolar/features/transaction/data/repositories/wallet_repository.dart';
+import 'package:carteira_digital_escolar/shared/widgets/bottom_nav_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -15,14 +16,15 @@ import '../../../../core/constants/app_colors.dart';
 /// 3. Confirma e faz POST /transactions (WalletRepository.recharge)
 /// 4. Retorna resultado para Dashboard via Navigator.pop(result)
 class RechargeScreen extends StatefulWidget {
-  /// Repositórios injetáveis
   final ProfileRepository? profileRepository;
   final WalletRepository? walletRepository;
+  final void Function(int navIndex)? onNavigateToTab; // ✅
 
   const RechargeScreen({
     super.key,
     this.profileRepository,
     this.walletRepository,
+    this.onNavigateToTab, // ✅
   });
 
   @override
@@ -54,6 +56,15 @@ class _RechargeScreenState extends State<RechargeScreen> {
     _profileRepository = widget.profileRepository ?? ProfileRepository();
     _walletRepository = widget.walletRepository ?? WalletRepository();
     _loadCurrentBalance();
+  }
+
+  void _onNavTap(int index) {
+    if (index == 2) return; // já estamos na recarga
+
+    // Fecha a tela de recarga e volta pro HomePage...
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    // ...e troca pra aba escolhida
+    widget.onNavigateToTab?.call(index);
   }
 
   @override
@@ -210,6 +221,10 @@ class _RechargeScreenState extends State<RechargeScreen> {
         body: const Center(
           child: CircularProgressIndicator(),
         ),
+        bottomNavigationBar: BottomNavBar(
+        currentIndex: 2,
+        onTap: _onNavTap,
+      ), // ✅
       );
     }
 

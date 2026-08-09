@@ -9,16 +9,17 @@ import '../../../../shared/models/transaction_model.dart';
 import '../../../../shared/widgets/transaction_tile.dart';
 
 class DashboardScreen extends StatefulWidget {
-  /// Repositórios injetáveis para testes
   final ProfileRepository? profileRepository;
   final StatementRepository? statementRepository;
   final WalletRepository? walletRepository;
+  final void Function(int navIndex)? onNavigateToTab; // ✅
 
   const DashboardScreen({
     super.key,
     this.profileRepository,
     this.statementRepository,
     this.walletRepository,
+    this.onNavigateToTab,
   });
 
   @override
@@ -106,21 +107,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   /// Abre a tela de recarga
   Future<void> _openRecharge() async {
-    if (_userProfile == null) return;
+  if (_userProfile == null) return;
 
-    final result = await Navigator.of(context).push<WalletOperationResult>(
-      MaterialPageRoute(
-        builder: (_) => RechargeScreen(
-          profileRepository: _profileRepository,
-          walletRepository: _walletRepository,
-        ),
+  final result = await Navigator.of(context).push<WalletOperationResult>(
+    MaterialPageRoute(
+      builder: (_) => RechargeScreen(
+        profileRepository: _profileRepository,
+        walletRepository: _walletRepository,
+        onNavigateToTab: widget.onNavigateToTab, // ✅
       ),
-    );
+    ),
+  );
 
-    if (result != null) {
-      _applyWalletResult(result);
-    }
-  }
+  if (result != null) _applyWalletResult(result);
+}
 
   /// Abre a tela de saque
   Future<void> _openWithdraw() async {

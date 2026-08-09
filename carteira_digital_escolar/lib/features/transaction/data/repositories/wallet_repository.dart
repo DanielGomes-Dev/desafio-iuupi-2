@@ -1,3 +1,4 @@
+import 'package:carteira_digital_escolar/core/network/auth_interceptor.dart';
 import 'package:carteira_digital_escolar/shared/models/transaction_model.dart';
 import 'package:dio/dio.dart';
 
@@ -33,14 +34,14 @@ class WalletRepository {
   final Dio _dio;
 
   WalletRepository({Dio? dio})
-      : _dio = dio ??
-            Dio(
-              BaseOptions(
-                baseUrl: 'http://10.0.2.2:3001', // ← Altere se necessário
-                connectTimeout: const Duration(seconds: 10),
-                receiveTimeout: const Duration(seconds: 10),
-              ),
-            );
+    : _dio = dio ??
+        (Dio(
+          BaseOptions(
+            baseUrl: 'http://10.0.2.2:3001',
+            connectTimeout: const Duration(seconds: 10),
+            receiveTimeout: const Duration(seconds: 10),
+          ),
+        )..interceptors.add(AuthInterceptor()));
 
   /// Cria uma recarga (crédito), aumentando o saldo.
   Future<WalletOperationResult> recharge({
@@ -83,11 +84,6 @@ class WalletRepository {
           if (description != null && description.trim().isNotEmpty)
             'description': description.trim(),
         },
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer desafio-mobile-token',
-          },
-        ),
       );
 
       final data = response.data!;
