@@ -26,7 +26,7 @@ class UserModel {
       email: json['email'] as String? ?? '',
       cpf: json['cpf'] as String? ?? '',
       school: json['school'] as String? ?? 'Escola Exemplo',
-      matricula: json['matricula'] as String? ?? json['enrollment'] as String? ?? '',
+      matricula: json['registration'] as String? ?? json['enrollment'] as String? ?? '',
       avatarUrl: json['avatar_url'] as String?,
       balance: (json['balance'] as num?)?.toDouble() ?? 0.0,
     );

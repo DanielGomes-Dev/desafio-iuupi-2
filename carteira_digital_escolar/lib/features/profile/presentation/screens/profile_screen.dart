@@ -6,14 +6,20 @@ import '../../../auth/controller/auth_controller.dart';
 import '../../../../core/constants/app_colors.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  /// Repositório injetável para testes
+  final ProfileRepository? profileRepository;
+
+  const ProfileScreen({
+    super.key,
+    this.profileRepository,
+  });
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // 1. Estado
+  // Estado
   UserModel? _user;
   bool _loading = true;
   String? _error;
@@ -23,11 +29,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _repository = ProfileRepository();
+    _repository = widget.profileRepository ?? ProfileRepository();
     _loadUser();
   }
 
-  // 2. Carregar dados do usuário
+  /// Carregar dados do usuário
   Future<void> _loadUser() async {
     setState(() {
       _loading = true;
@@ -40,15 +46,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _user = user;
         _loading = false;
       });
+      debugPrint('✅ Perfil carregado: ${user.name}');
     } catch (e) {
       setState(() {
         _error = 'Erro ao carregar perfil: $e';
         _loading = false;
       });
+      debugPrint('❌ Erro ao carregar perfil: $e');
     }
   }
 
-  // 3. Fazer logout
+  /// Fazer logout
   void _handleLogout() {
     showDialog(
       context: context,
@@ -61,10 +69,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: const Text('Cancelar'),
           ),
           TextButton(
-            onPressed: () {
-              // Chama logout no AuthController
-              context.read<AuthController>().logout();
-              Navigator.pop(context);
+            onPressed: () async  {
+              // Chama logout no AuthController (via Provider)
+              await context.read<AuthController>().logout();
+              if (context.mounted) Navigator.pop(context);
             },
             child: const Text(
               'Sair',
@@ -87,15 +95,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
-                          _error!,
-                          style: const TextStyle(color: Colors.red),
-                          textAlign: TextAlign.center,
+                        Icon(
+                          Icons.error_outline,
+                          size: 64,
+                          color: Theme.of(context).colorScheme.error,
                         ),
                         const SizedBox(height: 16),
-                        ElevatedButton(
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Text(
+                            _error!,
+                            style: const TextStyle(color: Colors.red),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton.icon(
                           onPressed: _loadUser,
-                          child: const Text('Tentar novamente'),
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Tentar novamente'),
                         ),
                       ],
                     ),
@@ -105,7 +123,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         children: [
                           // Cabeçalho com avatar e nome
                           _buildHeader(_user!),
-                          
+
                           // Informações do usuário
                           Expanded(
                             child: SingleChildScrollView(
@@ -117,11 +135,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   _buildInfoCard('Matrícula', _user!.matricula),
                                   const SizedBox(height: 16),
                                   _buildInfoCard('CPF', _user!.cpf),
+                                  const SizedBox(height: 16),
+                                  _buildInfoCard(
+                                    'Saldo',
+                                    'R\$ ${_user!.balance.toStringAsFixed(2).replaceAll('.', ',')}',
+                                    isBalance: true,
+                                  ),
                                 ],
                               ),
                             ),
                           ),
-                          
+
                           // Botão Sair
                           Padding(
                             padding: const EdgeInsets.all(24),
@@ -144,7 +168,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Widget: Cabeçalho com avatar
+  /// Widget: Cabeçalho com avatar
   Widget _buildHeader(UserModel user) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 24),
@@ -154,10 +178,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           CircleAvatar(
             radius: 60,
             backgroundColor: AppColors.primary.withOpacity(0.1),
-            backgroundImage: user.avatarUrl != null
+            backgroundImage: user.avatarUrl != null && user.avatarUrl!.isNotEmpty
                 ? NetworkImage(user.avatarUrl!)
                 : null,
-            child: user.avatarUrl == null
+            child: (user.avatarUrl == null || user.avatarUrl!.isEmpty)
                 ? const Icon(Icons.person, size: 60)
                 : null,
           ),
@@ -171,20 +195,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: AppColors.textPrimary,
             ),
           ),
+          const SizedBox(height: 4),
+          // Email
+          Text(
+            user.email,
+            style: TextStyle(
+              fontSize: 14,
+              color: Theme.of(context).hintColor,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  // Widget: Card de informação
-  Widget _buildInfoCard(String label, String value) {
+  /// Widget: Card de informação
+  Widget _buildInfoCard(
+    String label,
+    String value, {
+    bool isBalance = false,
+  }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isBalance
+            ? AppColors.primary.withOpacity(0.1)
+            : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppColors.inputBorder,
+          color: isBalance
+              ? AppColors.primary
+              : AppColors.inputBorder,
         ),
       ),
       child: Row(
@@ -204,14 +245,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 8),
               Text(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                  color: isBalance ? AppColors.primary : AppColors.textPrimary,
                 ),
               ),
             ],
           ),
+          if (isBalance)
+            Icon(
+              Icons.account_balance_wallet,
+              color: AppColors.primary,
+            ),
         ],
       ),
     );

@@ -7,15 +7,22 @@ class ProfileRepository {
 
   ProfileRepository({Dio? dio}) 
     : _dio = dio ?? Dio(BaseOptions(
-        baseUrl: 'http://10.0.2.2:3001', // ← Altere se necessário
+        baseUrl: 'http://10.0.2.2:3001', // ← Android Emulator
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
       ));
 
   /// Buscar dados do usuário logado
-  /// GET /v1/user
+  /// GET /me ← ENDPOINT CORRETO (não é /v1/user!)
+  /// 
+  /// ⚠️ IMPORTANTE: Este método NÃO faz fallback para mock!
+  /// Se der erro, a exceção é lançada para o Dashboard tratar.
   Future<UserModel> getCurrentUser() async {
     try {
+      debugPrint('🔄 Buscando usuário via GET /me...');
+      
       final response = await _dio.get<Map<String, dynamic>>(
-        '/v1/user',
+        '/me', // ← ENDPOINT CORRETO
         options: Options(
           headers: {
             'Authorization': 'Bearer desafio-mobile-token',
@@ -23,27 +30,30 @@ class ProfileRepository {
         ),
       );
 
+      debugPrint('📍 Status: ${response.statusCode}');
+      debugPrint('📦 Dados: ${response.data}');
+
       if (response.statusCode == 200 && response.data != null) {
         final user = UserModel.fromJson(response.data!);
-        debugPrint('✅ Usuário carregado: ${user.name}');
+        debugPrint('✅ Usuário carregado com SUCESSO: ${user.name}');
+        debugPrint('💰 Saldo: R\$ ${user.balance}');
         return user;
       }
 
-      throw Exception('Erro ao carregar usuário');
+      throw Exception('Resposta vazia ou status inválido: ${response.statusCode}');
     } on DioException catch (e) {
-      debugPrint('❌ Erro na requisição: ${e.message}');
+      debugPrint('❌ ERRO na requisição (não há fallback!)');
+      debugPrint('📌 Tipo: ${e.type}');
+      debugPrint('📌 Mensagem: ${e.message}');
+      debugPrint('📌 Response status: ${e.response?.statusCode}');
+      debugPrint('📌 Response data: ${e.response?.data}');
       
-      // Fallback com dados mockados
-      return UserModel(
-        id: '1',
-        name: 'João da Silva',
-        email: 'joao@example.com',
-        cpf: '123.456.789-00',
-        school: 'Escola Exemplo',
-        matricula: '20260001',
-        avatarUrl: 'https://i.pravatar.cc/300?img=12',
-        balance: 58.40,
-      );
+      // ❌ IMPORTANTE: NÃO fazer fallback para mock!
+      // Deixar a exceção ser lançada para o Dashboard tratar
+      rethrow;
+    } catch (e) {
+      debugPrint('❌ ERRO desconhecido: $e');
+      rethrow;
     }
   }
 }

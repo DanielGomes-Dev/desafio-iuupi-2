@@ -7,13 +7,14 @@ import 'package:provider/provider.dart';
 void main() {
 
 // flutter pub add provider
+  WidgetsFlutterBinding.ensureInitialized(); // necessário p/ shared_preferences
+
 
   runApp(
-      MultiProvider(providers: [
-        ChangeNotifierProvider(create: (_) => AuthController())
-      ],
+    MultiProvider(
+      providers: [ChangeNotifierProvider(create: (_) => AuthController())],
       child: const MyApp(),
-    )
+    ),
   );
 }
 
@@ -26,7 +27,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Master Class',
       theme: ThemeData(
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
       home: AuthGatePage(appWidget: (context) => const HomePage()),
     );

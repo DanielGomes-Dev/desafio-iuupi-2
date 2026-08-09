@@ -1,3 +1,4 @@
+import 'package:carteira_digital_escolar/features/profile/repositories/profile_repository.dart';
 import 'package:carteira_digital_escolar/features/transaction/data/repositories/wallet_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -5,21 +6,23 @@ import '../../../../core/constants/app_colors.dart';
 
 /// Tela de recarga de saldo.
 ///
-/// Recebe o saldo atual (para exibir "Saldo atual: R$ ...") e, ao
-/// concluir com sucesso, faz `Navigator.pop` devolvendo um
-/// [WalletOperationResult] — quem chamou (ex.: Dashboard) usa isso
-/// para atualizar o saldo exibido e inserir a nova transação no topo
-/// do extrato, sem precisar buscar tudo de novo.
+/// ✅ IMPORTANTE: Agora busca o saldo atual da API (ProfileRepository)
+/// em vez de receber via parâmetro.
+///
+/// Fluxo:
+/// 1. Carrega saldo atual via ProfileRepository.getCurrentUser()
+/// 2. Usuário insere valor de recarga
+/// 3. Confirma e faz POST /transactions (WalletRepository.recharge)
+/// 4. Retorna resultado para Dashboard via Navigator.pop(result)
 class RechargeScreen extends StatefulWidget {
-  final double currentBalance;
-
-  /// Permite injetar um repositório (ex.: em testes).
-  final WalletRepository? repository;
+  /// Repositórios injetáveis
+  final ProfileRepository? profileRepository;
+  final WalletRepository? walletRepository;
 
   const RechargeScreen({
     super.key,
-    required this.currentBalance,
-    this.repository,
+    this.profileRepository,
+    this.walletRepository,
   });
 
   @override
@@ -29,17 +32,28 @@ class RechargeScreen extends StatefulWidget {
 class _RechargeScreenState extends State<RechargeScreen> {
   static const _quickAmountsInCents = [1000, 2000, 5000, 10000];
 
-  late final WalletRepository _repository;
-  final _amountController = TextEditingController(text: '50,00');
-  final _descriptionController = TextEditingController();
+  late final ProfileRepository _profileRepository;
+  late final WalletRepository _walletRepository;
 
+  // Estado de carregamento do saldo
+  bool _isLoadingBalance = true;
+  double _currentBalance = 0.0;
+  String? _errorLoadingBalance;
+
+  // Estado de submissão da recarga
   bool _isSubmitting = false;
   String? _errorMessage;
+
+  // Controllers
+  final _amountController = TextEditingController(text: '50,00');
+  final _descriptionController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _repository = widget.repository ?? WalletRepository();
+    _profileRepository = widget.profileRepository ?? ProfileRepository();
+    _walletRepository = widget.walletRepository ?? WalletRepository();
+    _loadCurrentBalance();
   }
 
   @override
@@ -47,6 +61,33 @@ class _RechargeScreenState extends State<RechargeScreen> {
     _amountController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  /// Carrega o saldo atual da API
+  Future<void> _loadCurrentBalance() async {
+    setState(() {
+      _isLoadingBalance = true;
+      _errorLoadingBalance = null;
+    });
+
+    try {
+      debugPrint('🔄 Carregando saldo atual...');
+      final user = await _profileRepository.getCurrentUser();
+
+      setState(() {
+        _currentBalance = user.balance;
+        _isLoadingBalance = false;
+      });
+
+      debugPrint('✅ Saldo carregado: R\$ ${_currentBalance.toStringAsFixed(2)}');
+    } catch (e) {
+      setState(() {
+        _errorLoadingBalance = 'Erro ao carregar saldo: $e';
+        _isLoadingBalance = false;
+      });
+
+      debugPrint('❌ Erro ao carregar saldo: $e');
+    }
   }
 
   double get _amountValue {
@@ -73,12 +114,17 @@ class _RechargeScreenState extends State<RechargeScreen> {
     });
 
     try {
-      final result = await _repository.recharge(
+      debugPrint('💳 Processando recarga de R\$ ${_amountValue.toStringAsFixed(2)}...');
+
+      final result = await _walletRepository.recharge(
         amount: _amountValue,
         description: _descriptionController.text,
       );
 
       if (!mounted) return;
+
+      debugPrint('✅ Recarga realizada! Novo saldo: R\$ ${result.balance}');
+
       await _showSuccessDialog(result.balance);
 
       if (!mounted) return;
@@ -88,11 +134,13 @@ class _RechargeScreenState extends State<RechargeScreen> {
         _errorMessage = e.message;
         _isSubmitting = false;
       });
-    } catch (_) {
+      debugPrint('❌ Erro na recarga: ${e.message}');
+    } catch (e) {
       setState(() {
         _errorMessage = 'Não foi possível concluir a recarga. Tente novamente.';
         _isSubmitting = false;
       });
+      debugPrint('❌ Erro desconhecido: $e');
     }
   }
 
@@ -138,6 +186,85 @@ class _RechargeScreenState extends State<RechargeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Estado: Carregando saldo
+    if (_isLoadingBalance) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: AppColors.background,
+          elevation: 0,
+          titleSpacing: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          title: const Text(
+            'Recarga',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    // Estado: Erro ao carregar saldo
+    if (_errorLoadingBalance != null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          backgroundColor: AppColors.background,
+          elevation: 0,
+          titleSpacing: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          title: const Text(
+            'Recarga',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 64,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  _errorLoadingBalance!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16),
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _loadCurrentBalance,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Tentar novamente'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Estado: Normal (com saldo carregado)
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -166,14 +293,18 @@ class _RechargeScreenState extends State<RechargeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // ✅ Saldo carregado da API
                     Row(
                       children: [
                         const Text(
                           'Saldo atual: ',
-                          style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 14,
+                          ),
                         ),
                         Text(
-                          'R\$ ${widget.currentBalance.toStringAsFixed(2).replaceAll('.', ',')}',
+                          'R\$ ${_currentBalance.toStringAsFixed(2).replaceAll('.', ',')}',
                           style: const TextStyle(
                             color: AppColors.primary,
                             fontSize: 14,
@@ -183,6 +314,7 @@ class _RechargeScreenState extends State<RechargeScreen> {
                       ],
                     ),
                     const SizedBox(height: 32),
+
                     const Center(
                       child: Text(
                         'VALOR DA RECARGA',
@@ -195,6 +327,7 @@ class _RechargeScreenState extends State<RechargeScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
+
                     TextField(
                       controller: _amountController,
                       keyboardType: TextInputType.number,
@@ -221,17 +354,24 @@ class _RechargeScreenState extends State<RechargeScreen> {
                         isCollapsed: true,
                       ),
                     ),
+
                     if (_errorMessage != null) ...[
                       const SizedBox(height: 8),
                       Center(
                         child: Text(
                           _errorMessage!,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(color: Colors.red, fontSize: 13),
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ],
+
                     const SizedBox(height: 24),
+
+                    // Quick amount chips
                     Row(
                       children: _quickAmountsInCents
                           .map(
@@ -247,7 +387,9 @@ class _RechargeScreenState extends State<RechargeScreen> {
                           )
                           .toList(),
                     ),
+
                     const SizedBox(height: 28),
+
                     const Text(
                       'Descrição (opcional)',
                       style: TextStyle(
@@ -270,6 +412,7 @@ class _RechargeScreenState extends State<RechargeScreen> {
                 ),
               ),
             ),
+
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
               child: SizedBox(
@@ -312,9 +455,6 @@ String _formatThousands(int value) {
   return buffer.toString();
 }
 
-/// Formata a digitação como valor monetário no estilo "calculadora":
-/// cada dígito digitado entra como centavo, ex.: "5" → 0,05, "50" → 0,50,
-/// "5000" → 50,00.
 class _CentavosInputFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
@@ -341,7 +481,10 @@ class _QuickAmountChip extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
 
-  const _QuickAmountChip({required this.label, required this.onTap});
+  const _QuickAmountChip({
+    required this.label,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
