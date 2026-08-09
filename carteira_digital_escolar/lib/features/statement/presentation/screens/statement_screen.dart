@@ -1,4 +1,4 @@
-import 'package:dio/dio.dart';
+import 'package:carteira_digital_escolar/features/statement/data/repositories/statement_repository.dart';
 import 'package:flutter/material.dart';
 import '../../../../shared/models/transaction_model.dart';
 import '../../../../shared/widgets/transaction_tile.dart';
@@ -135,13 +135,19 @@ class DisplayGroup {
 }
 
 class StatementScreen extends StatefulWidget {
-  const StatementScreen({super.key});
+  /// Permite injetar um repositório (ex.: em testes) — se omitido,
+  /// a tela cria o repositório padrão.
+  final StatementRepository? repository;
+
+  const StatementScreen({super.key, this.repository});
 
   @override
   State<StatementScreen> createState() => _StatementScreenState();
 }
 
 class _StatementScreenState extends State<StatementScreen> {
+  late final StatementRepository _repository;
+
   _Filter _filter = _Filter.todos;
   int _navIndex = 1;
 
@@ -152,6 +158,7 @@ class _StatementScreenState extends State<StatementScreen> {
   @override
   void initState() {
     super.initState();
+    _repository = widget.repository ?? StatementRepository();
     _fetchTransactions();
   }
 
@@ -162,45 +169,38 @@ class _StatementScreenState extends State<StatementScreen> {
     _fetchTransactions();
   }
 
+  /// Converte o filtro da UI (_Filter) no filtro que o repositório entende.
+  StatementFilter _buildFilter() {
+    switch (_filter) {
+      case _Filter.credito:
+        return const StatementFilter(type: 'credit');
+      case _Filter.debito:
+        return const StatementFilter(type: 'debit');
+      case _Filter.todos:
+        return const StatementFilter();
+    }
+  }
+
   Future<void> _fetchTransactions() async {
     setState(() {
       isLoading = true;
     });
 
-    Map<String, dynamic> queryParams = {};
-    if (_filter == _Filter.credito) {
-      queryParams['type'] = 'credit';
-    } else if (_filter == _Filter.debito) {
-      queryParams['type'] = 'debit';
-    }
-
     try {
-      final response = await Dio().get(
-        'http://10.0.2.2:3001/transactions',
-        queryParameters: queryParams.isNotEmpty ? queryParams : null,
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer desafio-mobile-token',
-          },
-        ),
+      final transactions = await _repository.getTransactions(
+        filter: _buildFilter(),
       );
 
-      // 🎯 Acessa diretamente a chave "data" da resposta JSON
-      final List listData = response.data['data'] as List;
-
       setState(() {
-        _transactions = listData
-            .map((item) => TransactionModel.fromJson(Map<String, dynamic>.from(item)))
-            .toList();
-
+        _transactions = transactions;
         isUsingMock = false;
         isLoading = false;
       });
 
       debugPrint('🎉 CONECTADO COM SUCESSO NA API! Total: ${_transactions.length}');
-    } catch (e, stackTrace) {
+    } catch (e) {
       debugPrint('❌ Erro na requisição: $e');
-      
+
       // Fallback do mock continua aqui intacto...
       List<TransactionModel> fallback = _MockData.fallbackTransactions;
       if (_filter == _Filter.credito) {
@@ -216,6 +216,7 @@ class _StatementScreenState extends State<StatementScreen> {
       });
     }
   }
+
   List<DisplayGroup> get _groupedTransactions {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);

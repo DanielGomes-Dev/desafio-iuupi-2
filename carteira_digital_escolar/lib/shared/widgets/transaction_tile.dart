@@ -1,9 +1,13 @@
+import 'package:carteira_digital_escolar/features/statement/presentation/screens/transactions_detail.dart';
 import 'package:flutter/material.dart';
 import '../models/transaction_model.dart';
 
 class TransactionTile extends StatelessWidget {
   final TransactionModel transaction;
 
+  /// Callback opcional, chamado *depois* de abrir a tela de detalhes.
+  /// Útil para efeitos colaterais (ex.: analytics), sem precisar
+  /// reimplementar a navegação em cada tela que usa o TransactionTile.
   final VoidCallback? onTap;
 
   final bool showFullDate;
@@ -15,6 +19,15 @@ class TransactionTile extends StatelessWidget {
     this.showFullDate = true,
   });
 
+  void _handleTap(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TransactionDetailScreen(transaction: transaction),
+      ),
+    );
+    onTap?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isCredit = transaction.isCredit;
@@ -24,7 +37,7 @@ class TransactionTile extends StatelessWidget {
         : const Color(0xFFFDE9E7); // vermelho claro
 
     return GestureDetector(
-      onTap: onTap,
+      onTap: () => _handleTap(context),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 10),
         child: Row(
