@@ -1,30 +1,35 @@
-import 'package:carteira_digital_escolar/features/dashboard/presentation/screens/dashboard_screen.dart';
-import 'package:carteira_digital_escolar/features/statement/presentation/screens/statement_screen.dart';
+import 'package:carteira_digital_escolar/features/auth/controller/auth_controller.dart';
+import 'package:carteira_digital_escolar/features/auth/presentation/screens/auth_gate_page.dart';
+import 'package:carteira_digital_escolar/features/home_page.dart';
 import 'package:flutter/material.dart';
-import 'core/theme/app_theme.dart';
-import 'features/auth/presentation/screens/login_screen.dart';
+import 'package:provider/provider.dart';
 
 void main() {
-  runApp(const MyApp());
+
+// flutter pub add provider
+  WidgetsFlutterBinding.ensureInitialized(); // necessário p/ shared_preferences
+
+
+  runApp(
+    MultiProvider(
+      providers: [ChangeNotifierProvider(create: (_) => AuthController())],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
+  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'IUUPI',
-      debugShowCheckedModeBanner: false,
-      // theme: AppTheme.light,
+      title: 'Flutter Master Class',
       theme: ThemeData(
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF7F7F9),
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6C63FF)),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      // home: const LoginScreen(),
-      // home: const DashboardScreen(),
-      home: const StatementScreen(),
+      home: AuthGatePage(appWidget: (context) => const HomePage()),
     );
   }
 }

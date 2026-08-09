@@ -1,5 +1,8 @@
 import 'package:carteira_digital_escolar/core/constants/app_colors.dart';
+import 'package:carteira_digital_escolar/features/auth/controller/auth_controller.dart';
+import 'package:carteira_digital_escolar/features/auth/model/user.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../widgets/custom_text_field.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -13,6 +16,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _cpfController = TextEditingController();
   final _senhaController = TextEditingController();
   bool _senhaVisivel = false;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -21,9 +25,30 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _handleLogin() {
-    // TODO: chamar auth_controller / auth_repository aqui
-    debugPrint('CPF: ${_cpfController.text}');
+  Future<void> _handleLogin() async {
+    final cpf = _cpfController.text.trim();
+    final senha = _senhaController.text.trim();
+
+    if (cpf.isEmpty || senha.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Preencha CPF e senha.')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      await context.read<AuthController>().login(cpf: cpf, password: senha);
+      // AuthGatePage troca de tela sozinho ao detectar isAuthenticated
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('CPF ou senha inválidos.')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -35,7 +60,6 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             children: [
               const SizedBox(height: 60),
-              // Logo
               Container(
                 width: 72,
                 height: 72,
@@ -46,35 +70,21 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: const Center(
                   child: Text(
                     'U',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
               const SizedBox(height: 16),
               const Text(
                 'IUUPI',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1,
-                ),
+                style: TextStyle(color: AppColors.primary, fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: 1),
               ),
               const SizedBox(height: 8),
               const Text(
                 'Sua carteira escolar digital',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
               ),
               const SizedBox(height: 48),
-
-              // Campo CPF
               CustomTextField(
                 label: 'CPF do Estudante',
                 hint: '000.000.000-00',
@@ -82,8 +92,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 20),
-
-              // Campo Senha
               CustomTextField(
                 label: 'Senha',
                 hint: '••••••••',
@@ -91,36 +99,32 @@ class _LoginScreenState extends State<LoginScreen> {
                 obscureText: !_senhaVisivel,
                 suffixIcon: IconButton(
                   icon: Icon(
-                    _senhaVisivel
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined,
+                    _senhaVisivel ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                     color: AppColors.textSecondary,
                   ),
-                  onPressed: () {
-                    setState(() => _senhaVisivel = !_senhaVisivel);
-                  },
+                  onPressed: () => setState(() => _senhaVisivel = !_senhaVisivel),
                 ),
               ),
               const SizedBox(height: 32),
-
-              // Botão Entrar
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _handleLogin,
-                  child: const Text('Entrar'),
+                  onPressed: _isLoading ? null : _handleLogin,
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
+                        )
+                      : const Text('Entrar'),
                 ),
               ),
               const SizedBox(height: 16),
-
               TextButton(
                 onPressed: () {},
                 child: const Text(
                   'Esqueci minha senha',
-                  style: TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w500),
                 ),
               ),
             ],
