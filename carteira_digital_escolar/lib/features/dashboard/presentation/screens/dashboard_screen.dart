@@ -1,6 +1,10 @@
+import 'package:carteira_digital_escolar/features/transaction/data/repositories/wallet_repository.dart';
+import 'package:carteira_digital_escolar/features/transaction/presentation/screens/recharge_screen.dart';
+import 'package:carteira_digital_escolar/features/transaction/presentation/screens/withdraw_screen.dart';
 import 'package:flutter/material.dart';
 import '../../../../shared/models/transaction_model.dart';
 import '../../../../shared/widgets/transaction_tile.dart';
+
 
 enum _TxType { credit, debit }
 
@@ -90,8 +94,58 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   int _navIndex = 0;
 
+  final WalletRepository _walletRepository = WalletRepository();
+
+  // Estado mutável: começa a partir do mock, mas é atualizado de verdade
+  // quando uma recarga/saque é concluída.
+  double _balance = _MockData.balance;
+  List<TransactionModel> _transactions =
+      _MockData.transactions.map((mockTx) => mockTx.toModel()).toList();
+
+  Future<void> _openRecharge() async {
+    final result = await Navigator.of(context).push<WalletOperationResult>(
+      MaterialPageRoute(
+        builder: (_) => RechargeScreen(
+          currentBalance: _balance,
+          repository: _walletRepository,
+        ),
+      ),
+    );
+
+    if (result != null) {
+      _applyWalletResult(result);
+    }
+  }
+
+  Future<void> _openWithdraw() async {
+    final result = await Navigator.of(context).push<WalletOperationResult>(
+      MaterialPageRoute(
+        builder: (_) => WithdrawScreen(
+          currentBalance: _balance,
+          repository: _walletRepository,
+        ),
+      ),
+    );
+
+    if (result != null) {
+      _applyWalletResult(result);
+    }
+  }
+
+  /// Atualiza o saldo exibido e insere a nova transação no topo do extrato,
+  /// sem precisar buscar tudo de novo na API.
+  void _applyWalletResult(WalletOperationResult result) {
+    setState(() {
+      _balance = result.balance;
+      _transactions = [result.transaction, ..._transactions];
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Dashboard mostra só as 5 movimentações mais recentes.
+    final recentTransactions = _transactions.take(5).toList();
+
     return Scaffold(
       body: SafeArea(
         child: ListView(
@@ -99,26 +153,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             _Header(name: _MockData.userName, school: _MockData.school),
             const SizedBox(height: 24),
-            _BalanceCard(balance: _MockData.balance),
+            _BalanceCard(
+              balance: _balance,
+              onRecharge: _openRecharge,
+              onWithdraw: _openWithdraw,
+            ),
             const SizedBox(height: 28),
             const Text(
               'Últimas movimentações',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             // Usa TransactionTile compartilhado
-            ..._MockData.transactions.map((mockTx) {
-              final tx = mockTx.toModel();
+            ...recentTransactions.map((tx) {
               return Column(
                 children: [
                   TransactionTile(
                     transaction: tx,
                     showFullDate: true,
-                    onTap: () {
-                      // TODO: navegar para detalhe da transação
-                    },
                   ),
-                  if (mockTx != _MockData.transactions.last)
-                    const Divider(height: 1),
+                  if (tx != recentTransactions.last) const Divider(height: 1),
                 ],
               );
             }),
@@ -171,8 +224,14 @@ class _Header extends StatelessWidget {
 
 class _BalanceCard extends StatelessWidget {
   final double balance;
+  final VoidCallback onRecharge;
+  final VoidCallback onWithdraw;
 
-  const _BalanceCard({required this.balance});
+  const _BalanceCard({
+    required this.balance,
+    required this.onRecharge,
+    required this.onWithdraw,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -210,9 +269,7 @@ class _BalanceCard extends StatelessWidget {
                 child: _ActionButton(
                   icon: Icons.add,
                   label: 'Recarregar',
-                  onTap: () {
-                    // TODO: navegar para wallet/recharge_screen
-                  },
+                  onTap: onRecharge,
                 ),
               ),
               const SizedBox(width: 12),
@@ -220,9 +277,7 @@ class _BalanceCard extends StatelessWidget {
                 child: _ActionButton(
                   icon: Icons.arrow_downward,
                   label: 'Sacar',
-                  onTap: () {
-                    // TODO: navegar para wallet/withdraw_screen
-                  },
+                  onTap: onWithdraw,
                 ),
               ),
             ],
