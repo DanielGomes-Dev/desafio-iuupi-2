@@ -1,6 +1,5 @@
 import 'package:carteira_digital_escolar/core/constants/app_colors.dart';
 import 'package:carteira_digital_escolar/features/auth/controller/auth_controller.dart';
-import 'package:carteira_digital_escolar/features/auth/model/user.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../widgets/custom_text_field.dart';

@@ -1,3 +1,4 @@
+import 'package:carteira_digital_escolar/core/constants/app_url.dart';
 import 'package:carteira_digital_escolar/core/network/auth_interceptor.dart';
 import 'package:carteira_digital_escolar/shared/models/transaction_model.dart';
 import 'package:dio/dio.dart';
@@ -37,7 +38,7 @@ class WalletRepository {
     : _dio = dio ??
         (Dio(
           BaseOptions(
-            baseUrl: 'http://10.0.2.2:3001',
+            baseUrl:  Urls.baseUrl,
             connectTimeout: const Duration(seconds: 10),
             receiveTimeout: const Duration(seconds: 10),
           ),

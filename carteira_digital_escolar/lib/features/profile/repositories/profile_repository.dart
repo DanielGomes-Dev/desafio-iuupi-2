@@ -1,3 +1,4 @@
+import 'package:carteira_digital_escolar/core/constants/app_url.dart';
 import 'package:carteira_digital_escolar/core/network/auth_interceptor.dart';
 import 'package:carteira_digital_escolar/features/auth/model/user_model.dart';
 import 'package:dio/dio.dart';
@@ -9,7 +10,7 @@ class ProfileRepository {
   ProfileRepository({Dio? dio})
       : _dio = dio ??
           (Dio(BaseOptions(
-            baseUrl: 'http://10.0.2.2:3001',
+            baseUrl:  Urls.baseUrl,
             connectTimeout: const Duration(seconds: 10),
             receiveTimeout: const Duration(seconds: 10),
           ))..interceptors.add(AuthInterceptor()));

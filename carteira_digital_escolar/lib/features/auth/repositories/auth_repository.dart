@@ -1,3 +1,4 @@
+import 'package:carteira_digital_escolar/core/constants/app_url.dart';
 import 'package:dio/dio.dart';
 import '../model/user_model.dart';
 
@@ -18,7 +19,7 @@ class AuthRepository {
 
   AuthRepository({Dio? dio})
       : _dio = dio ?? Dio(BaseOptions(
-          baseUrl: 'http://10.0.2.2:3001',
+          baseUrl: Urls.baseUrl,
           connectTimeout: const Duration(seconds: 10),
           receiveTimeout: const Duration(seconds: 10),
         ));

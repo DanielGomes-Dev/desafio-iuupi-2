@@ -1,9 +1,0 @@
-services:
-  flutter-web:
-    build:
-      context: ./carteira_digital_escolar
-      dockerfile: Dockerfile
-    container_name: carteira_digital_web
-    ports:
-      - "8080:80"
-    restart: always
